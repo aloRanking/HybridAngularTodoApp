@@ -9,41 +9,83 @@ namespace HybridAngularTodoApp;
 public partial class MainPage : ContentPage
 {
     private readonly TodoDatabase _db;
-    private TodoJSInvokeTarget _jsInvokeTarget; // Keep a reference to the target
+    private TodoJSInvokeTarget _jsInvokeTarget;
 
     public MainPage(TodoDatabase db)
     {
         InitializeComponent();
         _db = db;
 
-        _jsInvokeTarget = new TodoJSInvokeTarget(this, _db); // Instantiate it
-        TodoWebView.SetInvokeJavaScriptTarget<TodoJSInvokeTarget>(_jsInvokeTarget);
+        _jsInvokeTarget = new TodoJSInvokeTarget(this, _db);
+        TodoWebView.SetInvokeJavaScriptTarget(_jsInvokeTarget);
 
+        // Set up the hybrid webview with proper event handlers
+        TodoWebView.Loaded += OnWebViewLoaded;
+        
         BindingContext = this;
-
-        // NEW: Call GetTodoItems after the page is loaded/initialized to push initial data
-        // You might want to do this in a Loaded event handler for the page or WebView
-        this.Loaded += MainPage_Loaded;
     }
 
-    private async void MainPage_Loaded(object sender, EventArgs e)
+    private async void OnWebViewLoaded(object sender, EventArgs e)
     {
-        // This ensures the WebView is ready before attempting to get data
-        // and push it to JS.
-        Console.WriteLine("MainPage_Loaded event fired. Requesting initial data for Angular.");
-        _jsInvokeTarget.GetTodoItems();
+        Console.WriteLine("WebView loaded. Waiting for Angular to be ready...");
+        
+        // Wait a bit for Angular to initialize
+        await Task.Delay(2000);
+        
+        // Send initial data to Angular
+        await SendInitialDataToJS();
     }
 
-
-    private async void SendUpdatedTasksToJS(IList<TodoItem> tasks)
+   private async Task SendInitialDataToJS()
     {
-        Console.WriteLine($"C# SendUpdatedTasksToJS called. Sending {tasks.Count} items to JS.");
-        _ = await MainThread.InvokeOnMainThreadAsync(async () =>
+        try
+        {
+            Console.WriteLine("Sending initial data to Angular...");
+            var items = await _db.GetItemsAsync();
+            await SendUpdatedTasksToJS(items);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending initial data: {ex.Message}");
+        }
+    }
+
+    // private async Task SendUpdatedTasksToJS(IList<TodoItem> tasks)
+    // {
+    //     try
+    //     {
+    //         Console.WriteLine($"C# SendUpdatedTasksToJS called. Sending {tasks.Count} items to JS.");
+            
+    //         await MainThread.InvokeOnMainThreadAsync(async () =>
+    //         {
+    //             await TodoWebView.InvokeJavaScriptAsync(
+    //                 $"if (window.globalSetData) {{ window.globalSetData({System.Text.Json.JsonSerializer.Serialize(tasks, TodoAppJsContext.Default.IListTodoItem)}); }}"
+    //             );
+    //         });
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Console.WriteLine($"Error sending tasks to JS: {ex.Message}");
+    //     }
+    // }
+
+
+    private async Task SendUpdatedTasksToJS(IList<TodoItem> tasks)
+    {
+        try
+        {
+            Console.WriteLine($"C# SendUpdatedTasksToJS called. Sending {tasks.Count} items to JS.");
+            _ = await MainThread.InvokeOnMainThreadAsync(async () =>
             _ = await TodoWebView.InvokeJavaScriptAsync<string>(
                 methodName: "globalSetData",
-                returnTypeJsonTypeInfo: TodoAppJsContext.Default.String, // String is fine, as it's not truly returning a useful string
+                returnTypeJsonTypeInfo: TodoAppJsContext.Default.String,
                 paramValues: [tasks],
                 paramJsonTypeInfos: [TodoAppJsContext.Default.IListTodoItem]));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending tasks to JS: {ex.Message}");
+        }
     }
 
 
@@ -56,7 +98,8 @@ public partial class MainPage : ContentPage
         });
     }
 
-    private sealed class TodoJSInvokeTarget
+    // JavaScript callable methods - these will be called from Angular via HybridWebView.InvokeMethod
+    public class TodoJSInvokeTarget
     {
         private readonly MainPage _mainPage;
         private readonly TodoDatabase _todoDatabase;
@@ -72,68 +115,74 @@ public partial class MainPage : ContentPage
             Console.WriteLine("JS invoked GetTodoItems (C#). Fetching from DB...");
             var items = await _todoDatabase.GetItemsAsync();
             Console.WriteLine($"Fetched {items.Count} items. Sending to JS.");
-            _mainPage.SendUpdatedTasksToJS(items);
+            await _mainPage.SendUpdatedTasksToJS(items);
         }
 
         public async void AddTodo(TodoItem todo)
         {
             Console.WriteLine($"JS invoked AddTodo (C#) for title: {todo.Title}");
-            // Removed manual ID assignment as database should handle it.
-            // var maxIndex = items.Any() ? items.Max(x => x.Id) : 0;
-            // todo.Id = maxIndex + 1;
-
+            
             await _todoDatabase.AddItemAsync(todo);
-
+            
             var updatedItems = await _todoDatabase.GetItemsAsync();
-            _mainPage.SendUpdatedTasksToJS(updatedItems); // Ensure this is uncommented and called
+            await _mainPage.SendUpdatedTasksToJS(updatedItems);
             Console.WriteLine("Todo added and updated items sent to JS.");
+            
+            await _mainPage.ShowToast("Todo added successfully!");
         }
 
         public async void RemoveTodoById(int id)
         {
             Console.WriteLine($"JS invoked RemoveTodoById (C#) for ID: {id}");
+            
             await _todoDatabase.RemoveItem(id);
             var items = await _todoDatabase.GetItemsAsync();
-            _mainPage.SendUpdatedTasksToJS(items);
+            await _mainPage.SendUpdatedTasksToJS(items);
             await _mainPage.ShowToast("Item deleted");
             Console.WriteLine("Todo removed and updated items sent to JS.");
         }
 
-        public async void UpdateDesc(int id, string title, string desc, bool IsCompleted) // Fixed typo in 'title'
+        public async void UpdateDesc(int id, string title, string desc, bool isCompleted)
         {
             Console.WriteLine($"JS invoked UpdateDesc (C#) for ID: {id}, Title: {title}");
-            await _todoDatabase.UpdateItem(id, title, desc, IsCompleted);
-            var items = await _todoDatabase.GetItemsAsync(); // Fetch updated items
-            _mainPage.SendUpdatedTasksToJS(items); // Send them to JS
+            
+            await _todoDatabase.UpdateItem(id, title, desc, isCompleted);
+            var items = await _todoDatabase.GetItemsAsync();
+            await _mainPage.SendUpdatedTasksToJS(items);
             Console.WriteLine("Todo updated and updated items sent to JS.");
+            
+            await _mainPage.ShowToast("Todo updated successfully!");
         }
 
-        public async void ToggleComplete(int id) // Changed parameter name from index to id for clarity
+        public async void ToggleComplete(int id)
         {
             Console.WriteLine($"JS invoked ToggleComplete (C#) for ID: {id}");
-            await _todoDatabase.ToggleComplete(id); // Assuming TodoDatabase.ToggleComplete takes ID
+            
+            await _todoDatabase.ToggleComplete(id);
             var items = await _todoDatabase.GetItemsAsync();
-            _mainPage.SendUpdatedTasksToJS(items);
+            await _mainPage.SendUpdatedTasksToJS(items);
             Console.WriteLine("Todo completion toggled and updated items sent to JS.");
         }
 
         public async void ClearCompleted()
         {
             Console.WriteLine("JS invoked ClearCompleted (C#).");
+            
             await _todoDatabase.ClearCompleted();
             var items = await _todoDatabase.GetItemsAsync();
-            _mainPage.SendUpdatedTasksToJS(items);
+            await _mainPage.SendUpdatedTasksToJS(items);
             Console.WriteLine("Completed todos cleared and updated items sent to JS.");
+            
+            await _mainPage.ShowToast("Completed todos cleared!");
         }
     }
 
     [JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    PropertyNameCaseInsensitive = true)]
-
+        PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true)]
     [JsonSerializable(typeof(IList<TodoItem>))]
-    [JsonSerializable(typeof(string))] // Still needed for the InvokeJavaScriptAsync signature
-    [JsonSerializable(typeof(TodoItem))] // Needed for AddTodo to deserialize correctly
+    [JsonSerializable(typeof(string))]
+    [JsonSerializable(typeof(TodoItem))]
     internal partial class TodoAppJsContext : JsonSerializerContext
     {
     }
