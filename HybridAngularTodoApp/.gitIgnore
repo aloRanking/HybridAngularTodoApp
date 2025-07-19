@@ -1,0 +1,97 @@
+# ===================================================================
+# .gitignore for .NET MAUI Projects
+#
+# This file is a combination of the standard Visual Studio .gitignore
+# and general best practices for cross-platform development.
+# ===================================================================
+
+# #############################
+# ## User-specific files (IDE) ##
+# #############################
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / Rider cache & metadata
+# This folder can contain large files and user-specific settings.
+.vs/
+.idea/
+
+# #################################
+# ## Build results / Artifacts ##
+# #################################
+# The double-star (**) is crucial for MAUI to ignore bin/obj in the
+# root and all platform-specific subdirectories (e.g., Platforms/Android/bin).
+**/[Bb]in/
+**/[Oo]bj/
+
+# #######################
+# ## Dependency Cache ##
+# #######################
+# NuGet Packages
+*.nupkg
+*.nuget.props
+*.nuget.targets
+
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/
+
+# #######################
+# ## Other Artifacts ##
+# #######################
+
+# Test Results
+TestResults/
+*.trx
+
+# Publish results
+**/[Pp]ublish/
+**/[Aa]ppPackages/
+**/[Bb]undle/
+*.pubxml
+*.pubxml.user
+
+# Code coverage
+*.coverage
+*.coveragexml
+
+# ReSharper
+*_i.c
+*_i.h
+*.resharper
+
+# ##################################
+# ## Environment & Secret files ##
+# ##################################
+# Keep sensitive connection strings and API keys out of source control.
+# Use User Secrets or a local settings file that is not committed.
+appsettings.Development.json
+secrets.json
+
+# #######################
+# ## Operating Systems ##
+# #######################
+
+# macOS
+# -------
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+__MACOSX/
+
+# Windows
+# -------
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+# -----
+*~
+.fuse_hidden*
+.directory
+.Trash-*
