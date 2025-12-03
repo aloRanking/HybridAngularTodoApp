@@ -1,4 +1,4 @@
-window.HybridWebView = {
+﻿window.HybridWebView = {
     "Init": function Init() {
         function DispatchHybridWebViewMessage(message) {
             const event = new CustomEvent("HybridWebViewMessageReceived", { detail: { message: message } });
@@ -106,11 +106,6 @@ window.HybridWebView = {
         }
     },
 
-    "__TriggerAsyncCallback": function __TriggerAsyncCallback(taskId, result) {
-        const json = JSON.stringify(result);
-        window.HybridWebView.__SendMessageInternal('__InvokeJavaScriptCompleted', taskId + '|' + json);
-    },
-
     "__TriggerAsyncFailedCallback": function __TriggerAsyncCallback(taskId, error) {
 
         if (!error) {
@@ -137,7 +132,13 @@ window.HybridWebView = {
         }
 
         json = JSON.stringify(json);
+
         window.HybridWebView.__SendMessageInternal('__InvokeJavaScriptFailed', taskId + '|' + json);
+    },
+
+    "__TriggerAsyncCallback": function __TriggerAsyncCallback(taskId, result) {
+        const json = JSON.stringify(result);
+        window.HybridWebView.__SendMessageInternal('__InvokeJavaScriptCompleted', taskId + '|' + json);
     }
 }
 

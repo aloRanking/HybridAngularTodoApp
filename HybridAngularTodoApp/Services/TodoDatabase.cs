@@ -18,8 +18,14 @@ public class TodoDatabase
         return _database.Table<TodoItem>().ToListAsync();
     }
 
+    //HybridAngularTodoApp/Resources/Raw/todo-app
+    //ng build --output-path="../../HybridAngularTodoApp/HybridAngularTodoApp/Resources/Raw/todo-app" --base-href="./"
+    
+
     public Task<int> AddItemAsync(TodoItem item)
+
     {
+        System.Console.WriteLine("Adding item to database: " + item.Title);
         return _database.InsertAsync(item);
     }
 
@@ -49,5 +55,14 @@ public class TodoDatabase
     public Task<int> ClearCompleted()
     {
         return _database.ExecuteAsync("DELETE FROM TodoItem WHERE isCompleted = 1");
+    }
+
+    public async Task ClearAll()
+    {
+        var allItems = await GetItemsAsync();
+        foreach (var item in allItems)
+        {
+            await RemoveItem(item.Id);
+        }
     }
 }

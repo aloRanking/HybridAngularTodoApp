@@ -3,10 +3,12 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="HybridAngularTodoApp.MainPage">
 
+    
     <HybridWebView
         x:Name="TodoWebView"
         HybridRoot="todo-app/browser"
-        DefaultFile="index.html"
+        HorizontalOptions="FillAndExpand"
+        VerticalOptions="FillAndExpand"
         />
 
 </ContentPage>

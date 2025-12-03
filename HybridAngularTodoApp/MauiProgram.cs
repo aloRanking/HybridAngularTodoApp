@@ -25,6 +25,7 @@ public static class MauiProgram
 		builder.Services.AddHybridWebViewDeveloperTools();
 #endif
 
+		
 		return builder.Build();
 	}
 }
